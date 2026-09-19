@@ -1,66 +1,62 @@
-- name: configuring backend component
-  hosts: backend
-  become: yes
-  tasks:
-  - name: disabling default nodejs
-    ansible.builtin.command: dnf module disable nodejs -y
+- name: disabling default nodejs
+  ansible.builtin.command: dnf module disable nodejs -y
 
-  - name: enabling default nodejs
-    ansible.builtin.command: dnf module enable nodejs:20 -y
+- name: enabling default nodejs
+  ansible.builtin.command: dnf module enable nodejs:20 -y
 
-  - name: installing nodejs 20
-    ansible.builtin.dnf:
-      name: nodejs
-      state: present
+- name: installing nodejs 20
+  ansible.builtin.dnf:
+    name: nodejs
+    state: present
+
+- name: creating app directory
+  ansible.builtin.file:
+    path: /app
+    state: directory
+
+
+- name: adding expense user
+  ansible.builtin.user:
+    name: expense
+    shell: /sbin/nologin
+    system: true
+    home: /app
+
+- name: Downloading the backend code
+  ansible.builtin.get_url:
+    url: https://expense-builds.s3.us-east-1.amazonaws.com/expense-backend-v2.zip
+    dest: /tmp/backend.zip
+
+- name: unzipping the backend code file
+  ansible.builtin.unarchive:
+    src: /tmp/backend.zip 
+    dest: /app
+    remote_src: yes
+
+- name: installing dependencies
+  community.general.npm:
+    path: /app
+    state: present
+
+- name: copying backend service file
+  ansible.builtin.copy:
+    src: backend.service
+    dest: /etc/systemd/system/backend.service
+
+- name: backend daemon reload
+  ansible.builtin.systemd_service:
+    daemon_reload:  true
   
-  - name: creating app directory
-    ansible.builtin.file:
-      path: /app
-      state: directory
+- name: installing mysql
+  ansible.builtin.dnf:
+    name: mysql
+    state: present
 
+- name: loading schema
+  ansible.builtin.shell: mysql -h mysql.anjuma.shop -uroot -p{{mysql_password}} < /app/schema/backend.sql
 
-  - name: adding expense user
-    ansible.builtin.user:
-      name: expense
-      shell: /sbin/nologin
-      system: true
-      home: /app
-  
-  - name: Downloading the backend code
-    ansible.builtin.get_url:
-      url: https://expense-builds.s3.us-east-1.amazonaws.com/expense-backend-v2.zip
-      dest: /tmp/backend.zip
-
-  - name: unzipping the backend code file
-    ansible.builtin.unarchive:
-      src: /tmp/backend.zip 
-      dest: /app
-      remote_src: yes
-  
-  - name: installing dependencies
-    community.general.npm:
-      path: /app
-      state: present
-  
-  - name: copying backend service file
-    ansible.builtin.copy:
-      src: backend.service
-      dest: /etc/systemd/system/backend.service
-  
-  - name: backend daemon reload
-    ansible.builtin.systemd_service:
-      daemon_reload:  true
-    
-  - name: installing mysql
-    ansible.builtin.dnf:
-      name: mysql
-      state: present
-
-  - name: loading schema
-    ansible.builtin.shell: mysql -h mysql.anjuma.shop -uroot -p{{mysql_password}} < /app/schema/backend.sql
-
-  - name: starting and enabling backend service
-    ansible.builtin.service:
-      name: backend
-      state: started
-      enabled: yes
+- name: starting and enabling backend service
+  ansible.builtin.service:
+    name: backend
+    state: started
+    enabled: yes
