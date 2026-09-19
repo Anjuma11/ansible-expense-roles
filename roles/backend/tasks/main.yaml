@@ -53,7 +53,7 @@
     state: present
 
 - name: loading schema
-  ansible.builtin.shell: mysql -h mysql.anjuma.shop -uroot -p{{mysql_password}} < /app/schema/backend.sql
+  ansible.builtin.shell: mysql -h mysql.anjuma.shop -uroot -p{{ mysql_password }} < /app/schema/backend.sql
 
 - name: starting and enabling backend service
   ansible.builtin.service:
